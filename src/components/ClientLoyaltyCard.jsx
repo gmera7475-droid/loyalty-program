@@ -3,49 +3,51 @@ import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../lib/supabaseClient';
 import { getOrCreateCustomerCard } from '../services/loyaltyService';
 
-export default function ClientLoyaltyCard({ session }) {
+export default function ClientLoyaltyCard({ customerId }) {
   const [cardData, setCardData] = useState(null);
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showQrModal, setShowQrModal] = useState(false);
 
-  const customerId = session.user.id;
-  const customerName = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
+  // Usar un ID por defecto si se prueba localmente sin parámetro en la URL
+  const activeCustomerId = customerId || "cliente-demo-manuel";
 
   useEffect(() => {
-    async function loadData() {
+    async function loadClientData() {
       setLoading(true);
-      // 1. Obtener información del negocio por defecto (o el primero activo)
+      // 1. Obtener el negocio principal
       const { data: bizList } = await supabase.from('businesses').select('*').limit(1);
       
       if (bizList && bizList.length > 0) {
         const currentBiz = bizList[0];
         setBusiness(currentBiz);
 
-        // 2. Obtener o crear la tarjeta del cliente para este negocio
-        const card = await getOrCreateCustomerCard(currentBiz.id, customerId);
+        // 2. Obtener o crear la tarjeta digital de este cliente
+        const card = await getOrCreateCustomerCard(currentBiz.id, activeCustomerId);
         setCardData(card);
 
-        // 3. Suscribirse a cambios en tiempo real en la tarjeta (Realtime de Supabase)
-        const subscription = supabase
-          .channel('public:loyalty_cards')
-          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'loyalty_cards', filter: `id=eq.${card?.id}` }, 
-            (payload) => {
-              setCardData(payload.new);
-            }
-          )
-          .subscribe();
+        // 3. Escuchar cambios en tiempo real (si el dueño le suma un sello, se actualiza solo)
+        if (card) {
+          const subscription = supabase
+            .channel(`card:${card.id}`)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'loyalty_cards', filter: `id=eq.${card.id}` }, 
+              (payload) => {
+                setCardData(payload.new);
+              }
+            )
+            .subscribe();
 
-        setLoading(false);
-        return () => {
-          supabase.removeChannel(subscription);
-        };
+          setLoading(false);
+          return () => {
+            supabase.removeChannel(subscription);
+          };
+        }
       }
       setLoading(false);
     }
 
-    loadData();
-  }, [customerId]);
+    loadClientData();
+  }, [activeCustomerId]);
 
   const getThemeConfig = (type) => {
     switch (type) {
@@ -67,6 +69,9 @@ export default function ClientLoyaltyCard({ session }) {
   const currentStamps = cardData?.current_stamps || 0;
   const maxStamps = cardData?.max_stamps || 6;
 
+  // Enlace único personalizado para este cliente
+  const clientUrl = `${window.location.origin}/?client=${activeCustomerId}`;
+
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
@@ -74,14 +79,14 @@ export default function ClientLoyaltyCard({ session }) {
         {/* Cabecera */}
         <div className={`bg-gradient-to-r ${theme.color} p-6 text-white text-center`}>
           <span className="text-3xl mb-2 inline-block">{theme.icon}</span>
-          <h1 className="text-xl font-bold tracking-tight">{business?.name || 'Mi Negocio'}</h1>
+          <h1 className="text-xl font-bold tracking-tight">{business?.name || 'Veterinaria San Martín'}</h1>
           <p className="text-white/80 text-sm mt-1">Tarjeta de Lealtad Digital</p>
         </div>
 
         {/* Contenido */}
         <div className="p-6">
           <div className="mb-6">
-            <h2 className="text-slate-800 text-lg font-semibold">¡Hola, {customerName}! 👋</h2>
+            <h2 className="text-slate-800 text-lg font-semibold">¡Hola de nuevo! 👋</h2>
             <p className="text-slate-500 text-sm">Acumula sellos en cada visita y gana recompensas.</p>
           </div>
 
@@ -127,16 +132,18 @@ export default function ClientLoyaltyCard({ session }) {
           </button>
         </div>
 
-        {/* Modal QR con el ID real del usuario en Supabase */}
+        {/* Modal QR con el enlace único del cliente */}
         {showQrModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
             <div className="bg-white rounded-3xl p-6 max-w-xs w-full text-center shadow-2xl relative">
-              <h3 className="text-lg font-bold text-slate-800 mb-1">Escanea tu tarjeta</h3>
-              <p className="text-xs text-slate-500 mb-6">Muestra este código al personal</p>
+              <h3 className="text-lg font-bold text-slate-800 mb-1">Tu Tarjeta Digital</h3>
+              <p className="text-xs text-slate-500 mb-6">Muestra este código al personal del local</p>
               
-              <div className="bg-white p-4 rounded-2xl inline-block mb-6 border border-slate-200 shadow-sm flex justify-center">
-                <QRCodeSVG value={customerId} size={180} level={"H"} includeMargin={true} />
+              <div className="bg-white p-4 rounded-2xl inline-block mb-4 border border-slate-200 shadow-sm flex justify-center">
+                <QRCodeSVG value={clientUrl} size={180} level={"H"} includeMargin={true} />
               </div>
+
+              <p className="text-[10px] text-slate-400 mb-6 break-all">Guarda este enlace en favoritos para consultar tus sellos siempre.</p>
 
               <button
                 onClick={() => setShowQrModal(false)}
