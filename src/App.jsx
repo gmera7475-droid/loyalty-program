@@ -6,49 +6,25 @@ import OwnerDashboard from './components/OwnerDashboard';
 
 export default function App() {
   const [session, setSession] = useState(null);
-  const [userRole, setUserRole] = useState(null); // 'owner' o 'customer'
   const [loading, setLoading] = useState(true);
 
+  // Extraer un parámetro de la URL si el cliente entra por enlace directo (ej: ?client=uuid-123)
+  const queryParams = new URLSearchParams(window.location.search);
+  const clientIdParam = queryParams.get('client');
+
   useEffect(() => {
-    // 1. Obtener la sesión activa al cargar
+    // Verificar si hay sesión de Dueño/Personal activa en Supabase
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchUserRole(session.user.id);
-      else setLoading(false);
+      setLoading(false);
     });
 
-    // 2. Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) {
-        fetchUserRole(session.user.id);
-      } else {
-        setUserRole(null);
-        setLoading(false);
-      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  // Consultar el rol del usuario en la tabla 'profiles'
-  const fetchUserRole = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .single();
-
-      if (error) throw error;
-      setUserRole(data?.role || 'customer');
-    } catch (err) {
-      console.error('Error al obtener rol:', err.message);
-      setUserRole('customer'); // Por defecto si no se encuentra perfil
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -58,23 +34,26 @@ export default function App() {
     );
   }
 
-  // Si no hay sesión, mostrar pantalla de Login
-  if (!session) {
-    return <Login />;
+  // CASO 1: Si la URL trae un identificador de cliente (ej: ?client=123), mostrar directamente la tarjeta sin login
+  if (clientIdParam) {
+    return <ClientLoyaltyCard customerId={clientIdParam} />;
   }
 
-  // Si hay sesión, renderizar según el rol almacenado en Supabase
-  return (
-    <div>
-      {/* Botón flotante temporal para cerrar sesión */}
-      <button
-        onClick={() => supabase.auth.signOut()}
-        className="fixed top-4 right-4 z-50 bg-white/80 backdrop-blur-md border border-slate-200 text-slate-700 hover:bg-slate-100 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm transition-all"
-      >
-        Cerrar Sesión
-      </button>
+  // CASO 2: Si el dueño ya inició sesión en Supabase, mostrar su panel administrativo
+  if (session) {
+    return (
+      <div>
+        <button
+          onClick={() => supabase.auth.signOut()}
+          className="fixed top-4 right-4 z-50 bg-white/80 backdrop-blur-md border border-slate-200 text-slate-700 hover:bg-slate-100 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm transition-all"
+        >
+          Cerrar Sesión Dueño
+        </button>
+        <OwnerDashboard session={session} />
+      </div>
+    );
+  }
 
-      {userRole === 'owner' ? <OwnerDashboard /> : <ClientLoyaltyCard />}
-    </div>
-  );
+  // CASO 3: Por defecto, mostrar la pantalla de Login exclusiva para el Dueño del negocio
+  return <Login />;
 }
