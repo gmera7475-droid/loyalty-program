@@ -14,9 +14,6 @@ export default function Login({ onLoginSuccess }) {
     // Autenticación por enlace mágico (Magic Link) o inicio rápido
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: {
-        emailRedirectTo: window.location.origin,
-      },
     });
 
     if (error) {
