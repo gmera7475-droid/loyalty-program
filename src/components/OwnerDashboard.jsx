@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { supabase } from '../lib/supabaseClient';
 import { addStamp, redeemReward, getOrCreateCustomerCard } from '../services/loyaltyService';
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function OwnerDashboard({ session }) {
   const [business, setBusiness] = useState(null);
@@ -9,6 +10,7 @@ export default function OwnerDashboard({ session }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showRegisterQrModal, setShowRegisterQrModal] = useState(false);
 
   const staffId = session.user.id;
 
@@ -143,12 +145,20 @@ export default function OwnerDashboard({ session }) {
             </div>
           </div>
 
-          <button
-            onClick={() => setShowScannerModal(true)}
-            className="w-full md:w-auto bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 px-6 rounded-2xl shadow-lg transition-all flex items-center justify-center space-x-2 active:scale-95"
-          >
-            <span>Escanear QR de Cliente</span>
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            <button
+              onClick={() => setShowRegisterQrModal(true)}
+              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-medium py-3 px-4 rounded-2xl transition-all flex items-center justify-center space-x-2 text-sm"
+            >
+              <span>QR Nuevo Cliente</span>
+            </button>
+            <button
+              onClick={() => setShowScannerModal(true)}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 px-6 rounded-2xl shadow-lg transition-all flex items-center justify-center space-x-2 active:scale-95 text-sm"
+            >
+              <span>Escanear QR de Cliente</span>
+            </button>
+          </div>
         </div>
 
         {/* Tabla de Clientes */}
@@ -218,6 +228,38 @@ export default function OwnerDashboard({ session }) {
             </table>
           </div>
         </div>
+
+        {/* Modal QR de Registro para Mostrador */}
+{showRegisterQrModal && business && (
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-3xl p-6 max-w-xs w-full text-center shadow-2xl">
+      <h3 className="text-lg font-bold text-slate-800 mb-1">QR de Registro</h3>
+      <p className="text-xs text-slate-500 mb-5">
+        Pide al cliente nuevo que escanee este código para activar su tarjeta
+      </p>
+
+      <div className="bg-white p-4 rounded-2xl inline-block mb-4 border border-slate-200 shadow-sm">
+        <QRCodeSVG 
+          value={`${window.location.origin}/?register=${business.id}`} 
+          size={180} 
+          level="H" 
+          includeMargin={true} 
+        />
+      </div>
+
+      <p className="text-[10px] text-slate-400 mb-5 break-all">
+        {`${window.location.origin}/?register=${business.id}`}
+      </p>
+
+      <button
+        onClick={() => setShowRegisterQrModal(false)}
+        className="w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-medium py-3 rounded-xl transition-all"
+      >
+        Cerrar
+      </button>
+    </div>
+  </div>
+)}
 
         {/* Modal de Cámara */}
         {showScannerModal && (
