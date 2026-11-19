@@ -11,33 +11,56 @@ export default function CustomerOnboarding({ businessId, onRegistered }) {
 
   useEffect(() => {
     async function fetchBusiness() {
-      let query = supabase.from('businesses').select('*');
-      if (businessId && businessId !== 'default') {
-        query = query.eq('id', businessId);
-      }
-      const { data } = await query.limit(1);
-      if (data && data.length > 0) {
-        setBusiness(data[0]);
+      try {
+        let data = null;
+
+        if (businessId && businessId !== 'default') {
+          const res = await supabase
+            .from('businesses')
+            .select('*')
+            .eq('id', businessId)
+            .limit(1);
+          data = res.data;
+        }
+
+        // Si no se encontró por ID o vino como 'default', tomar el primer negocio disponible
+        if (!data || data.length === 0) {
+          const fallback = await supabase.from('businesses').select('*').limit(1);
+          data = fallback.data;
+        }
+
+        if (data && data.length > 0) {
+          setBusiness(data[0]);
+        }
+      } catch (err) {
+        console.error('Error cargando negocio en onboarding:', err);
       }
     }
+
     fetchBusiness();
   }, [businessId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!business) return;
+
+    const targetBusinessId =
+      business?.id || (businessId && businessId !== 'default' ? businessId : null);
+
+    if (!targetBusinessId) {
+      setErrorMsg('No se encontró un negocio configurado en el sistema.');
+      return;
+    }
 
     setLoading(true);
     setErrorMsg('');
 
-    const res = await registerNewCustomer(business.id, fullName.trim(), phone.trim());
+    const res = await registerNewCustomer(targetBusinessId, fullName.trim(), phone.trim());
 
     if (res.success) {
-      // Guardar en la memoria del teléfono para futuros accesos directos
       localStorage.setItem('loyalty_customer_id', res.customerId);
       onRegistered(res.customerId);
     } else {
-      setErrorMsg('Hubo un problema al crear tu tarjeta. Intenta de nuevo.');
+      setErrorMsg(res.error || 'Hubo un problema al crear tu tarjeta. Intenta de nuevo.');
     }
     setLoading(false);
   };
@@ -92,7 +115,7 @@ export default function CustomerOnboarding({ businessId, onRegistered }) {
 
           <button
             type="submit"
-            disabled={loading || !business}
+            disabled={loading}
             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-4 rounded-2xl shadow-lg transition-all active:scale-95 disabled:opacity-50 mt-2"
           >
             {loading ? 'Creando tu tarjeta...' : 'Obtener mi Tarjeta Digital'}
