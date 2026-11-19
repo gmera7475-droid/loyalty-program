@@ -56,4 +56,8 @@ export default function App() {
 
   // CASO 3: Por defecto, mostrar la pantalla de Login exclusiva para el Dueño del negocio
   return <Login />;
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> ff6f287b17792e4de2534fc371b3402a2504dbbc
