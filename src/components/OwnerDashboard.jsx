@@ -230,36 +230,36 @@ export default function OwnerDashboard({ session }) {
         </div>
 
         {/* Modal QR de Registro para Mostrador */}
-{showRegisterQrModal && business && (
-  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-    <div className="bg-white rounded-3xl p-6 max-w-xs w-full text-center shadow-2xl">
-      <h3 className="text-lg font-bold text-slate-800 mb-1">QR de Registro</h3>
-      <p className="text-xs text-slate-500 mb-5">
-        Pide al cliente nuevo que escanee este código para activar su tarjeta
-      </p>
+        {showRegisterQrModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-3xl p-6 max-w-xs w-full text-center shadow-2xl">
+              <h3 className="text-lg font-bold text-slate-800 mb-1">QR de Registro</h3>
+              <p className="text-xs text-slate-500 mb-5">
+                Pide al cliente nuevo que escanee este código para activar su tarjeta
+              </p>
 
-      <div className="bg-white p-4 rounded-2xl inline-block mb-4 border border-slate-200 shadow-sm">
-        <QRCodeSVG 
-          value={`${window.location.origin}/?register=${business.id}`} 
-          size={180} 
-          level="H" 
-          includeMargin={true} 
-        />
-      </div>
+              <div className="bg-white p-4 rounded-2xl inline-block mb-4 border border-slate-200 shadow-sm">
+                <QRCodeSVG
+                  value={`${window.location.origin}/?register=${business?.id || 'default'}`}
+                  size={180}
+                  level="H"
+                  includeMargin={true}
+                />
+              </div>
 
-      <p className="text-[10px] text-slate-400 mb-5 break-all">
-        {`${window.location.origin}/?register=${business.id}`}
-      </p>
+              <p className="text-[10px] text-slate-400 mb-5 break-all">
+                {`${window.location.origin}/?register=${business?.id || 'default'}`}
+              </p>
 
-      <button
-        onClick={() => setShowRegisterQrModal(false)}
-        className="w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-medium py-3 rounded-xl transition-all"
-      >
-        Cerrar
-      </button>
-    </div>
-  </div>
-)}
+              <button
+                onClick={() => setShowRegisterQrModal(false)}
+                className="w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-medium py-3 rounded-xl transition-all"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Modal de Cámara */}
         {showScannerModal && (
