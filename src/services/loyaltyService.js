@@ -106,10 +106,9 @@ export async function redeemReward(loyaltyCardId, staffId) {
 // 4. Registrar un nuevo cliente desde el QR del mostrador (Onboarding rápido)
 export async function registerNewCustomer(businessId, fullName, phone) {
   try {
-    // Generar un UUID único para el cliente sin requerir Supabase Auth
     const newCustomerId = crypto.randomUUID();
 
-    // A. Guardar datos básicos en la tabla profiles (si existe en tu esquema)
+    // 1. Insertar perfil del cliente
     const { error: profileError } = await supabase
       .from('profiles')
       .insert([{
@@ -120,12 +119,24 @@ export async function registerNewCustomer(businessId, fullName, phone) {
       }]);
 
     if (profileError) {
-      console.warn('Nota al guardar perfil (continuando con tarjeta):', profileError.message);
+      throw new Error(`Error en perfil: ${profileError.message}`);
     }
 
-    // B. Crear su tarjeta de lealtad con 0 sellos
-    const card = await getOrCreateCustomerCard(businessId, newCustomerId);
-    if (!card) throw new Error('No se pudo crear la tarjeta digital');
+    // 2. Crear tarjeta de lealtad
+    const { data: card, error: cardError } = await supabase
+      .from('loyalty_cards')
+      .insert([{
+        business_id: businessId,
+        customer_id: newCustomerId,
+        current_stamps: 0,
+        max_stamps: 10
+      }])
+      .select()
+      .single();
+
+    if (cardError) {
+      throw new Error(`Error en tarjeta: ${cardError.message}`);
+    }
 
     return { success: true, customerId: newCustomerId, card };
   } catch (err) {

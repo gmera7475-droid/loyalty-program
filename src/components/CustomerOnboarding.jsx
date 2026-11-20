@@ -82,7 +82,7 @@ export default function CustomerOnboarding({ businessId, onRegistered }) {
             <input
               type="text"
               required
-              placeholder="Ej. Carlos / Max"
+              placeholder="Ej. Manuel / Lion"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
