@@ -44,12 +44,8 @@ export default function CustomerOnboarding({ businessId, onRegistered }) {
     e.preventDefault();
 
     const targetBusinessId =
-      business?.id || (businessId && businessId !== 'default' ? businessId : null);
-
-    if (!targetBusinessId) {
-      setErrorMsg('No se encontró un negocio configurado en el sistema.');
-      return;
-    }
+      business?.id ||
+      (businessId && businessId !== 'default' ? businessId : 'default-business');
 
     setLoading(true);
     setErrorMsg('');
@@ -63,7 +59,7 @@ export default function CustomerOnboarding({ businessId, onRegistered }) {
       setErrorMsg(res.error || 'Hubo un problema al crear tu tarjeta. Intenta de nuevo.');
     }
     setLoading(false);
-  };
+  };;
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
