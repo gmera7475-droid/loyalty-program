@@ -3,6 +3,7 @@ import { Html5QrcodeScanner } from 'html5-qrcode';
 import { supabase } from '../lib/supabaseClient';
 import { addStamp, redeemReward, getOrCreateCustomerCard } from '../services/loyaltyService';
 import { QRCodeSVG } from 'qrcode.react';
+import BusinessSetup from './BusinessSetup';
 
 export default function OwnerDashboard({ session }) {
   const [business, setBusiness] = useState(null);
@@ -14,39 +15,47 @@ export default function OwnerDashboard({ session }) {
 
   const staffId = session.user.id;
 
-  // Cargar datos reales del negocio y sus tarjetas vinculadas
+  const fetchCustomersForBusiness = async (bizId) => {
+    const { data: cards, error } = await supabase
+      .from('loyalty_cards')
+      .select('id, current_stamps, max_stamps, customer_id, profiles(full_name, phone)')
+      .eq('business_id', bizId);
+
+    if (!error && cards) {
+      const formatted = cards.map(c => ({
+        cardId: c.id,
+        customerId: c.customer_id,
+        name: c.profiles?.full_name || 'Cliente sin nombre',
+        phone: c.profiles?.phone || 'Sin teléfono',
+        stamps: c.current_stamps,
+        maxStamps: c.max_stamps
+      }));
+      setCustomers(formatted);
+    }
+  };
+
+  // Cargar el negocio del dueño y sus tarjetas vinculadas
   useEffect(() => {
     async function loadOwnerData() {
       setLoading(true);
-      // 1. Obtener negocio
-      const { data: bizList } = await supabase.from('businesses').select('*').limit(1);
+      const { data: bizList } = await supabase
+        .from('businesses')
+        .select('*')
+        .eq('owner_id', session.user.id)
+        .limit(1);
+
       if (bizList && bizList.length > 0) {
         const currentBiz = bizList[0];
         setBusiness(currentBiz);
-
-        // 2. Obtener tarjetas de lealtad de este negocio con información del perfil del cliente
-        const { data: cards, error } = await supabase
-          .from('loyalty_cards')
-          .select('id, current_stamps, max_stamps, customer_id, profiles(full_name, phone)')
-          .eq('business_id', currentBiz.id);
-
-        if (!error && cards) {
-          const formatted = cards.map(c => ({
-            cardId: c.id,
-            customerId: c.customer_id,
-            name: c.profiles?.full_name || 'Cliente sin nombre',
-            phone: c.profiles?.phone || 'Sin teléfono',
-            stamps: c.current_stamps,
-            maxStamps: c.max_stamps
-          }));
-          setCustomers(formatted);
-        }
+        await fetchCustomersForBusiness(currentBiz.id);
+      } else {
+        setBusiness(null);
       }
       setLoading(false);
     }
 
     loadOwnerData();
-  }, []);
+  }, [session.user.id]);
 
   // Manejar el escaneo QR y acreditación de sello en base de datos
   useEffect(() => {
@@ -118,6 +127,18 @@ export default function OwnerDashboard({ session }) {
       <div className="min-h-screen bg-slate-100 flex items-center justify-center">
         <p className="text-slate-500 font-medium animate-pulse">Cargando panel de administración...</p>
       </div>
+    );
+  }
+
+  // Si el dueño autenticado aún no ha creado su negocio, mostrar asistente de configuración
+  if (!business) {
+    return (
+      <BusinessSetup
+        session={session}
+        onBusinessCreated={(newBiz) => {
+          setBusiness(newBiz);
+        }}
+      />
     );
   }
 

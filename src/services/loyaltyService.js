@@ -1,5 +1,55 @@
 import { supabase } from '../lib/supabaseClient';
 
+export async function registerNewCustomer(businessId, fullName, phone) {
+  try {
+    const newCustomerId = crypto.randomUUID();
+
+    // 0. Consultar cuántos sellos exige este negocio
+    const { data: bizData } = await supabase
+      .from('businesses')
+      .select('stamps_required')
+      .eq('id', businessId)
+      .single();
+
+    const maxStamps = bizData?.stamps_required || 10;
+
+    // 1. Insertar perfil del cliente
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert([{
+        id: newCustomerId,
+        full_name: fullName,
+        phone: phone,
+        role: 'customer'
+      }]);
+
+    if (profileError) {
+      throw new Error(`Error en perfil: ${profileError.message}`);
+    }
+
+    // 2. Crear tarjeta de lealtad con los sellos configurados por el negocio
+    const { data: card, error: cardError } = await supabase
+      .from('loyalty_cards')
+      .insert([{
+        business_id: businessId,
+        customer_id: newCustomerId,
+        current_stamps: 0,
+        max_stamps: maxStamps
+      }])
+      .select()
+      .single();
+
+    if (cardError) {
+      throw new Error(`Error en tarjeta: ${cardError.message}`);
+    }
+
+    return { success: true, customerId: newCustomerId, card };
+  } catch (err) {
+    console.error('Error en registerNewCustomer:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
 // 1. Obtener o crear la tarjeta de lealtad de un cliente para un negocio
 export async function getOrCreateCustomerCard(businessId, customerId) {
   try {
