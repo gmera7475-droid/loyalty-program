@@ -5,6 +5,7 @@ import { addStamp, redeemReward, getOrCreateCustomerCard } from '../services/loy
 import { QRCodeSVG } from 'qrcode.react';
 import BusinessSetup from './BusinessSetup';
 import BusinessSettingsModal from './BusinessSettingsModal';
+import ActivityOverview from './ActivityOverview';
 
 export default function OwnerDashboard({ session }) {
   const [business, setBusiness] = useState(null);
@@ -14,6 +15,7 @@ export default function OwnerDashboard({ session }) {
   const [loading, setLoading] = useState(true);
   const [showRegisterQrModal, setShowRegisterQrModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [transactions, setTransactions] = useState([]);
 
   const staffId = session.user.id;
 
@@ -34,6 +36,20 @@ export default function OwnerDashboard({ session }) {
       }));
       setCustomers(formatted);
     }
+
+    if (!error && cards) {
+      const formatted = cards.map((c) => ({
+        cardId: c.id,
+        customerId: c.customer_id,
+        name: c.profiles?.full_name || 'Cliente sin nombre',
+        phone: c.profiles?.phone || 'Sin teléfono',
+        stamps: c.current_stamps,
+        maxStamps: c.max_stamps,
+      }));
+      setCustomers(formatted);
+      await fetchTransactionsForCards(formatted);
+    }
+
   };
 
   // Cargar el negocio del dueño y sus tarjetas vinculadas
@@ -104,6 +120,9 @@ export default function OwnerDashboard({ session }) {
     } else {
       alert('Error al sumar sello.');
     }
+
+    await fetchTransactionsForCards(customers);
+
   };
 
   const handleRedeemButton = async (cardId) => {
@@ -113,6 +132,32 @@ export default function OwnerDashboard({ session }) {
       alert('🎁 ¡Recompensa canjeada con éxito!');
     } else {
       alert('Error al canjear recompensa.');
+    }
+    await fetchTransactionsForCards(customers);
+  };
+
+  const fetchTransactionsForCards = async (cardsList) => {
+    if (!cardsList || cardsList.length === 0) {
+      setTransactions([]);
+      return;
+    }
+
+    const cardIds = cardsList.map((c) => c.cardId);
+    const cardMap = Object.fromEntries(cardsList.map((c) => [c.cardId, c.name]));
+
+    const { data: txData, error } = await supabase
+      .from('transactions')
+      .select('id, loyalty_card_id, type, stamps_added, created_at')
+      .in('loyalty_card_id', cardIds)
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    if (!error && txData) {
+      const enriched = txData.map((tx) => ({
+        ...tx,
+        customerName: cardMap[tx.loyalty_card_id] || 'Cliente',
+      }));
+      setTransactions(enriched);
     }
   };
 
@@ -191,6 +236,8 @@ export default function OwnerDashboard({ session }) {
             </button>
           </div>
         </div>
+
+        <ActivityOverview customers="{customers}" transactions="{transactions}"/>
 
         {/* Tabla de Clientes */}
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
