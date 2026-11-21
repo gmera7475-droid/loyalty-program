@@ -26,21 +26,17 @@ export default function OwnerDashboard({ session }) {
       .eq('business_id', bizId);
 
     if (!error && cards) {
-      const formatted = cards.map(c => ({
+      const formatted = cards.map((c) => ({
         cardId: c.id,
         customerId: c.customer_id,
         name: c.profiles?.full_name || 'Cliente sin nombre',
         phone: c.profiles?.phone || 'Sin teléfono',
         stamps: c.current_stamps,
-        maxStamps: c.max_stamps
+        maxStamps: c.max_stamps,
       }));
       setCustomers(formatted);
-    }
-
-    
       await fetchTransactionsForCards(formatted);
     }
-
   };
 
   // Cargar el negocio del dueño y sus tarjetas vinculadas
@@ -350,17 +346,18 @@ export default function OwnerDashboard({ session }) {
         )}
 
         {showSettingsModal && business && (
-  <BusinessSettingsModal
-    business={business}
-    onClose={() => setShowSettingsModal(false)}
-    onSaved={(updatedBiz) => {
-      setBusiness(updatedBiz);
-      alert('¡Configuración del negocio actualizada!');
-    }}
-  />
-)}
+          <BusinessSettingsModal
+            business={business}
+            onClose={() => setShowSettingsModal(false)}
+            onSaved={(updatedBiz) => {
+              setBusiness(updatedBiz);
+              alert('¡Configuración del negocio actualizada!');
+            }}
+          />
+        )}
 
       </div>
     </div>
   );
 }
+
