@@ -37,16 +37,7 @@ export default function OwnerDashboard({ session }) {
       setCustomers(formatted);
     }
 
-    if (!error && cards) {
-      const formatted = cards.map((c) => ({
-        cardId: c.id,
-        customerId: c.customer_id,
-        name: c.profiles?.full_name || 'Cliente sin nombre',
-        phone: c.profiles?.phone || 'Sin teléfono',
-        stamps: c.current_stamps,
-        maxStamps: c.max_stamps,
-      }));
-      setCustomers(formatted);
+    
       await fetchTransactionsForCards(formatted);
     }
 
@@ -237,7 +228,7 @@ export default function OwnerDashboard({ session }) {
           </div>
         </div>
 
-        <ActivityOverview customers="{customers}" transactions="{transactions}"/>
+        <ActivityOverview customers={customers} transactions={transactions} />
 
         {/* Tabla de Clientes */}
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
