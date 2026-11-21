@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { addStamp, redeemReward, getOrCreateCustomerCard } from '../services/loyaltyService';
 import { QRCodeSVG } from 'qrcode.react';
 import BusinessSetup from './BusinessSetup';
+import BusinessSettingsModal from './BusinessSettingsModal';
 
 export default function OwnerDashboard({ session }) {
   const [business, setBusiness] = useState(null);
@@ -12,6 +13,7 @@ export default function OwnerDashboard({ session }) {
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showRegisterQrModal, setShowRegisterQrModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const staffId = session.user.id;
 
@@ -167,6 +169,14 @@ export default function OwnerDashboard({ session }) {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+
+            <button
+    onClick={() => setShowSettingsModal(true)}
+    className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-medium py-3 px-4 rounded-2xl transition-all flex items-center justify-center space-x-2 text-sm"
+  >
+    <span>⚙️ Configurar</span>
+  </button>
+
             <button
               onClick={() => setShowRegisterQrModal(true)}
               className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-medium py-3 px-4 rounded-2xl transition-all flex items-center justify-center space-x-2 text-sm"
@@ -300,6 +310,17 @@ export default function OwnerDashboard({ session }) {
             </div>
           </div>
         )}
+
+        {showSettingsModal && business && (
+  <BusinessSettingsModal
+    business={business}
+    onClose={() => setShowSettingsModal(false)}
+    onSaved={(updatedBiz) => {
+      setBusiness(updatedBiz);
+      alert('¡Configuración del negocio actualizada!');
+    }}
+  />
+)}
 
       </div>
     </div>
