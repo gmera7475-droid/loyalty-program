@@ -286,39 +286,46 @@ export default function OwnerDashboard({ session }) {
                     <td colSpan="4" className="py-6 text-center text-slate-400">No hay clientes con tarjetas activas todavía.</td>
                   </tr>
                 ) : (
-                  filteredCustomers.map((customer) => (
-                    <tr key={customer.cardId} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-4 font-semibold text-slate-800">{customer.name}</td>
-                      <td className="py-4 text-slate-600">{customer.phone}</td>
-                      <td className="py-4">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-bold text-emerald-600">{customer.stamps} / {customer.maxStamps}</span>
-                          <div className="w-24 bg-slate-200 h-2 rounded-full overflow-hidden">
-                            <div 
-                              className="bg-emerald-500 h-full transition-all duration-300"
-                              style={{ width: `${(customer.stamps / customer.maxStamps) * 100}%` }}
-                            ></div>
+                  filteredCustomers.map((customer) => {
+                    const targetStamps = business?.stamps_required || customer.maxStamps || 10;
+                    const progressPct = Math.min(100, (customer.stamps / targetStamps) * 100);
+
+                    return (
+                      <tr key={customer.cardId} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-4 font-semibold text-slate-800">{customer.name}</td>
+                        <td className="py-4 text-slate-600">{customer.phone}</td>
+                        <td className="py-4">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold text-emerald-600">
+                              {customer.stamps} / {targetStamps}
+                            </span>
+                            <div className="w-24 bg-slate-200 h-2 rounded-full overflow-hidden">
+                              <div
+                                className="bg-emerald-500 h-full transition-all duration-300"
+                                style={{ width: `${progressPct}%` }}
+                              ></div>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-4 text-right space-x-2">
-                        <button
-                          onClick={() => handleAddStampButton(customer.cardId)}
-                          disabled={customer.stamps >= customer.maxStamps}
-                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium px-3 py-1.5 rounded-xl text-xs transition-all disabled:opacity-40"
-                        >
-                          +1 Sello
-                        </button>
-                        <button
-                          onClick={() => handleRedeemButton(customer.cardId)}
-                          disabled={customer.stamps < customer.maxStamps}
-                          className="bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium px-3 py-1.5 rounded-xl text-xs transition-all disabled:opacity-40"
-                        >
-                          Canjear 🎁
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="py-4 text-right space-x-2">
+                          <button
+                            onClick={() => handleAddStampButton(customer.cardId)}
+                            disabled={customer.stamps >= targetStamps}
+                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium px-3 py-1.5 rounded-xl text-xs transition-all disabled:opacity-40"
+                          >
+                            +1 Sello
+                          </button>
+                          <button
+                            onClick={() => handleRedeemButton(customer.cardId)}
+                            disabled={customer.stamps < targetStamps}
+                            className="bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium px-3 py-1.5 rounded-xl text-xs transition-all disabled:opacity-40"
+                          >
+                            Canjear 🎁
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -380,8 +387,16 @@ export default function OwnerDashboard({ session }) {
           <BusinessSettingsModal
             business={business}
             onClose={() => setShowSettingsModal(false)}
-            onSaved={(updatedBiz) => {
+            onSaved={async (updatedBiz) => {
               setBusiness(updatedBiz);
+
+              // Actualizar max_stamps en las tarjetas de este negocio
+              await supabase
+                .from('loyalty_cards')
+                .update({ max_stamps: Number(updatedBiz.stamps_required) })
+                .eq('business_id', updatedBiz.id);
+
+              await fetchCustomersForBusiness(updatedBiz.id);
               alert('¡Configuración del negocio actualizada!');
             }}
           />

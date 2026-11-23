@@ -28,7 +28,8 @@ export default function ClientLoyaltyCard({ customerId }) {
         .from('loyalty_cards')
         .select('*')
         .eq('customer_id', activeCustomerId)
-        .order('created_at', { ascending: false })
+        .order('current_stamps', { ascending: false })
+        .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
