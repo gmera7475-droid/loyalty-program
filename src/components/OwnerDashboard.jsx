@@ -79,8 +79,8 @@ export default function OwnerDashboard({ session }) {
             if (card) {
               const res = await addStamp(card.id, staffId);
               if (res.success) {
+                await fetchCustomersForBusiness(business.id);
                 alert('¡Sello acreditado exitosamente en Supabase!');
-                window.location.reload(); // Recargar para actualizar la tabla
               } else {
                 alert('Error al acreditar sello.');
               }
