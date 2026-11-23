@@ -62,6 +62,32 @@ export default function OwnerDashboard({ session }) {
     loadOwnerData();
   }, [session.user.id]);
 
+  const extractCustomerIdFromQr = (rawText) => {
+  if (!rawText) return '';
+  const trimmed = rawText.trim();
+
+  try {
+    // Si el QR contiene una URL (ej. https://.../ ?client=123-abc)
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      const parsedUrl = new URL(trimmed);
+      const clientParam = parsedUrl.searchParams.get('client');
+      if (clientParam) return clientParam.trim();
+    }
+
+    // Si contiene un query string relativo como "/?client=123-abc" o "?client=123-abc"
+    if (trimmed.includes('client=')) {
+      const queryPart = trimmed.includes('?') ? trimmed.split('?')[1] : trimmed;
+      const params = new URLSearchParams(queryPart);
+      const clientParam = params.get('client');
+      if (clientParam) return clientParam.trim();
+    }
+  } catch (e) {
+    // Si no es una URL válida, se asume que es un ID directo
+  }
+
+  return trimmed;
+};
+
   // Manejar el escaneo QR y acreditación de sello en base de datos
   useEffect(() => {
     let scanner = null;
@@ -70,26 +96,31 @@ export default function OwnerDashboard({ session }) {
         scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }, false);
         
         scanner.render(
-          async (decodedText) => {
-            scanner.clear();
-            setShowScannerModal(false);
+  async (decodedText) => {
+    scanner.clear();
+    setShowScannerModal(false);
 
-            // decodedText contiene el customer_id escaneado
-            const card = await getOrCreateCustomerCard(business.id, decodedText);
-            if (card) {
-              const res = await addStamp(card.id, staffId);
-              if (res.success) {
-                await fetchCustomersForBusiness(business.id);
-                alert('¡Sello acreditado exitosamente en Supabase!');
-              } else {
-                alert('Error al acreditar sello.');
-              }
-            } else {
-              alert('No se pudo encontrar o crear la tarjeta para este cliente.');
-            }
-          },
-          (error) => {}
-        );
+    const scannedCustomerId = extractCustomerIdFromQr(decodedText);
+    if (!scannedCustomerId) {
+      alert('No se pudo leer un código de cliente válido.');
+      return;
+    }
+
+    const card = await getOrCreateCustomerCard(business.id, scannedCustomerId);
+    if (card) {
+      const res = await addStamp(card.id, staffId);
+      if (res.success) {
+        await fetchCustomersForBusiness(business.id);
+        alert('¡Sello acreditado exitosamente!');
+      } else {
+        alert('Error al acreditar sello.');
+      }
+    } else {
+      alert('No se pudo encontrar o crear la tarjeta para este cliente.');
+    }
+  },
+  (error) => {}
+);
       }, 100);
 
       return () => {
